@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Studium Tracking & KI-Lernplaner</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>Studium Tracking & KI-Lernplaner</h1>
+            <p>Organisiere dein Studium intelligent mit KI-Unterstützung</p>
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav">
+            <button class="nav-btn active" onclick="showSection('dashboard')">Dashboard</button>
+            <button class="nav-btn" onclick="showSection('modules')">Module</button>
+            <button class="nav-btn" onclick="showSection('sessions')">Lern-Sessions</button>
+            <button class="nav-btn" onclick="showSection('lernplan')">KI-Lernplan</button>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Alert Container -->
+            <div id="alertContainer"></div>
+
+            <!-- DASHBOARD SECTION -->
+            <div id="dashboard" class="section active">
+                <div class="card">
+                    <h2>Deine Lernstatistiken</h2>
+                    <div class="stats-grid" id="statsGrid">
+                        <!-- Stats werden hier dynamisch eingefügt -->
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>Deine Module</h2>
+                    <div class="module-list" id="dashboardModules">
+                        <!-- Module werden hier dynamisch eingefügt -->
+                    </div>
+                </div>
+
+                <div class="card" id="dashboardRecommendation">
+                    <h2>Aktuelle KI-Empfehlung</h2>
+                    <div id="dashboardRecommendationText">
+                        <p class="text-muted text-center">Noch keine Empfehlung vorhanden. Erstelle einen Lernplan im KI-Lernplan Tab!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODULES SECTION -->
+            <div id="modules" class="section">
+                <div class="card">
+                    <h2>Neues Modul hinzufügen</h2>
+                    <form id="moduleForm">
+                        <div class="form-group">
+                            <label for="moduleName">Modulname *</label>
+                            <input type="text" id="moduleName" required placeholder="z.B. Programmierung I">
+                        </div>
+                        <div class="form-group">
+                            <label for="targetHours">Ziel-Stunden *</label>
+                            <input type="number" id="targetHours" step="0.5" min="0" required placeholder="z.B. 50">
+                        </div>
+                        <div class="form-group">
+                            <label for="examDate">Prüfungsdatum (optional)</label>
+                            <input type="date" id="examDate">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Modul erstellen</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h2>Alle Module</h2>
+                    <div class="module-list" id="modulesList">
+                        <!-- Module werden hier dynamisch eingefügt -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- SESSIONS SECTION -->
+            <div id="sessions" class="section">
+                <div class="card">
+                    <h2>Neue Lern-Session eintragen</h2>
+                    <form id="sessionForm">
+                        <div class="form-group">
+                            <label for="sessionModule">Modul *</label>
+                            <select id="sessionModule" required>
+                                <option value="">Bitte wählen...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="sessionDuration">Dauer (Stunden) *</label>
+                            <input type="number" id="sessionDuration" step="0.25" min="0.25" required placeholder="z.B. 2.5">
+                        </div>
+                        <div class="form-group">
+                            <label for="sessionDate">Datum *</label>
+                            <input type="date" id="sessionDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="sessionNotes">Notizen (optional)</label>
+                            <textarea id="sessionNotes" placeholder="Was hast du gelernt?"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success">Session hinzufügen</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h2>Alle Lern-Sessions</h2>
+                    <table class="sessions-table">
+                        <thead>
+                            <tr>
+                                <th>Datum</th>
+                                <th>Modul</th>
+                                <th>Dauer</th>
+                                <th>Notizen</th>
+                                <th>Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sessionsTableBody">
+                            <!-- Sessions werden hier dynamisch eingefügt -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- LERNPLAN SECTION -->
+            <div id="lernplan" class="section">
+                <div class="card">
+                    <h2>KI-gestützter Lernplan</h2>
+                    <p class="text-muted mb-20">
+                        Lasse dir von künstlicher Intelligenz einen individuellen Lernplan erstellen,
+                        der deine aktuellen Fortschritte und Prüfungstermine berücksichtigt.
+                    </p>
+                    <button class="btn btn-primary" onclick="generateRecommendation()">
+                        Neuen Lernplan generieren
+                    </button>
+                    <div id="recommendationSpinner" class="spinner hidden"></div>
+                </div>
+
+                <div class="card" id="recommendationCard">
+                    <h2>Aktueller Lernplan</h2>
+                    <div class="recommendation-box" id="recommendationText">
+                        <p class="text-muted text-center">Noch kein Lernplan vorhanden. Klicke auf "Neuen Lernplan generieren"!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:5000/api';
+
+        function showAlert(message, type = 'success') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alertContainer.appendChild(alert);
+
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'Nicht gesetzt';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('de-DE');
+        }
+
+        function showSection(sectionId) {
+            // Alle Sections ausblenden
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+
+            // Alle Nav-Buttons deaktivieren
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Gewählte Section anzeigen
+            document.getElementById(sectionId).classList.add('active');
+            event.target.classList.add('active');
+
+            // Daten laden wenn nötig
+            if (sectionId === 'dashboard') {
+                loadDashboard();
+            } else if (sectionId === 'modules') {
+                loadModules();
+            } else if (sectionId === 'sessions') {
+                loadSessions();
+                loadModulesForSelect();
+            } else if (sectionId === 'lernplan') {
+                loadRecommendation();
+            }
+        }
+
+        async function apiCall(endpoint, method = 'GET', data = null) {
+            try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                };
+
+                if (data) {
+                    options.body = JSON.stringify(data);
+                }
+
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'API Fehler');
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error('API Call Error:', error);
+                throw error;
+            }
+        }
+
+        async function loadDashboard() {
+            try {
+                const data = await apiCall('/dashboard');
+
+                // Stats anzeigen
+                const statsGrid = document.getElementById('statsGrid');
+                statsGrid.innerHTML = `
+                    <div class="stat-card">
+                        <h3>${data.statistics.hours_today}h</h3>
+                        <p>Heute gelernt</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${data.statistics.hours_week}h</h3>
+                        <p>Diese Woche</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${data.statistics.hours_month}h</h3>
+                        <p>Diesen Monat</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${data.statistics.total_modules}</h3>
+                        <p>Aktive Module</p>
+                    </div>
+                `;
+
+                // Module anzeigen
+                displayModules(data.modules, 'dashboardModules');
+
+                // Empfehlung anzeigen
+                const recommendationText = document.getElementById('dashboardRecommendationText');
+                if (data.last_recommendation) {
+                    recommendationText.innerHTML = `
+                        <div class="recommendation-box">
+                            ${data.last_recommendation.recommendation_text}
+                        </div>
+                        <p class="text-muted mt-20">
+                            Erstellt am: ${formatDate(data.last_recommendation.created_at)}
+                        </p>
+                    `;
+                } else {
+                    recommendationText.innerHTML = `
+                        <p class="text-muted text-center">
+                            Noch keine Empfehlung vorhanden. Erstelle einen Lernplan im KI-Lernplan Tab!
+                        </p>
+                    `;
+                }
+            } catch (error) {
+                showAlert('Fehler beim Laden des Dashboards: ' + error.message, 'error');
+            }
+        }
+
+        async function loadModules() {
+            try {
+                const modules = await apiCall('/modules');
+                displayModules(modules, 'modulesList');
+            } catch (error) {
+                showAlert('Fehler beim Laden der Module: ' + error.message, 'error');
+            }
+        }
+
+        function displayModules(modules, containerId) {
+            const container = document.getElementById(containerId);
+            
+            if (modules.length === 0) {
+                container.innerHTML = '<p class="text-muted text-center">Noch keine Module vorhanden.</p>';
+                return;
+            }
+
+            container.innerHTML = modules.map(module => `
+                <div class="module-card">
+                    <h3>${module.name}</h3>
+                    <div class="module-info">
+                        <p><strong>Ziel:</strong> ${module.target_hours}h</p>
+                        <p><strong>Gelernt:</strong> ${module.actual_hours}h</p>
+                        <p><strong>Prüfung:</strong> ${formatDate(module.exam_date)}</p>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${Math.min(module.progress_percentage, 100)}%">
+                            ${module.progress_percentage}%
+                        </div>
+                    </div>
+                    <button class="btn btn-danger" onclick="deleteModule(${module.id}, '${module.name}')">
+                        Löschen
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        document.getElementById('moduleForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const data = {
+                name: document.getElementById('moduleName').value,
+                target_hours: parseFloat(document.getElementById('targetHours').value),
+                exam_date: document.getElementById('examDate').value || null
+            };
+
+            try {
+                await apiCall('/modules', 'POST', data);
+                showAlert('Modul erfolgreich erstellt!', 'success');
+                document.getElementById('moduleForm').reset();
+                loadModules();
+            } catch (error) {
+                showAlert('Fehler beim Erstellen des Moduls: ' + error.message, 'error');
+            }
+        });
+
+        async function deleteModule(id, name) {
+            if (!confirm(`Modul "${name}" wirklich löschen? Alle zugehörigen Sessions werden ebenfalls gelöscht!`)) {
+                return;
+            }
+
+            try {
+                await apiCall(`/modules/${id}`, 'DELETE');
+                showAlert('Modul erfolgreich gelöscht!', 'success');
+                loadModules();
+            } catch (error) {
+                showAlert('Fehler beim Löschen des Moduls: ' + error.message, 'error');
+            }
+        }
+
+        async function loadModulesForSelect() {
+            try {
+                const modules = await apiCall('/modules');
+                const select = document.getElementById('sessionModule');
+                
+                select.innerHTML = '<option value="">Bitte wählen...</option>' +
+                    modules.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+            } catch (error) {
+                showAlert('Fehler beim Laden der Module: ' + error.message, 'error');
+            }
+        }
+
+        async function loadSessions() {
+            try {
+                const sessions = await apiCall('/sessions');
+                const tbody = document.getElementById('sessionsTableBody');
+                
+                if (sessions.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Noch keine Sessions vorhanden.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = sessions.map(session => `
+                    <tr>
+                        <td>${formatDate(session.date)}</td>
+                        <td>${session.module_name}</td>
+                        <td>${session.duration}h</td>
+                        <td>${session.notes || '-'}</td>
+                        <td>
+                            <button class="btn btn-danger" onclick="deleteSession(${session.id})">Löschen</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                showAlert('Fehler beim Laden der Sessions: ' + error.message, 'error');
+            }
+        }
+
+        document.getElementById('sessionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const data = {
+                module_id: parseInt(document.getElementById('sessionModule').value),
+                duration: parseFloat(document.getElementById('sessionDuration').value),
+                date: document.getElementById('sessionDate').value,
+                notes: document.getElementById('sessionNotes').value
+            };
+
+            try {
+                await apiCall('/sessions', 'POST', data);
+                showAlert('Session erfolgreich hinzugefügt!', 'success');
+                document.getElementById('sessionForm').reset();
+                loadSessions();
+            } catch (error) {
+                showAlert('Fehler beim Erstellen der Session: ' + error.message, 'error');
+            }
+        });
+
+        async function deleteSession(id) {
+            if (!confirm('Session wirklich löschen?')) {
+                return;
+            }
+
+            try {
+                await apiCall(`/sessions/${id}`, 'DELETE');
+                showAlert('Session erfolgreich gelöscht!', 'success');
+                loadSessions();
+            } catch (error) {
+                showAlert('Fehler beim Löschen der Session: ' + error.message, 'error');
+            }
+        }
+
+        async function loadRecommendation() {
+            try {
+                const recommendation = await apiCall('/recommend');
+                displayRecommendation(recommendation);
+            } catch (error) {
+                document.getElementById('recommendationText').innerHTML = `
+                    <p class="text-muted text-center">Noch kein Lernplan vorhanden. Klicke auf "Neuen Lernplan generieren"!</p>
+                `;
+            }
+        }
+
+        async function generateRecommendation() {
+            const spinner = document.getElementById('recommendationSpinner');
+            spinner.classList.remove('hidden');
+
+            try {
+                const recommendation = await apiCall('/recommend', 'POST');
+                showAlert('Lernplan erfolgreich generiert!', 'success');
+                displayRecommendation(recommendation);
+            } catch (error) {
+                showAlert('Fehler beim Generieren: ' + error.message, 'error');
+            } finally {
+                spinner.classList.add('hidden');
+            }
+        }
+
+        function displayRecommendation(recommendation) {
+            const recommendationText = document.getElementById('recommendationText');
+            recommendationText.innerHTML = `
+                ${recommendation.recommendation_text}
+                <p class="text-muted mt-20">Erstellt am: ${formatDate(recommendation.created_at)}</p>
+            `;
+        }
+
+        // Heutiges Datum als Standard setzen
+        document.getElementById('sessionDate').valueAsDate = new Date();
+
+        // Dashboard initial laden
+        loadDashboard();
+    </script>
+</body>
+</html>
