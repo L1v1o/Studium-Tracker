@@ -157,5 +157,6 @@ Die App läuft jetzt auf deinem Raspberry Pi und startet automatisch beim Booten
 3. Erfasse deine erste Lernsession
 4. Generiere deinen persönlichen KI-Lernplan
 
-**Viel Erfolg beim Lernen! 📚🚀**
+**Viel Erfolg beim Lernen!**
 #
+
